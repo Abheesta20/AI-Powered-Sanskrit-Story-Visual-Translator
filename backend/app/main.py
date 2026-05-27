@@ -43,11 +43,14 @@ app.add_middleware(
         "http://127.0.0.1:3001",
 
         # ✅ ADD YOUR VERCEL FRONTEND HERE
-        "https://ai-powered-sanskrit-story-visual-tr.vercel.app"
+        "https://ai-powered-sanskrit-story-visual-tr.vercel.app",
+        "https://ai-powered-sanskrit-story-visual-git-e02297-abheesta-s-projects.vercel.app",
+        "https://ai-powered-sanskrit-story-visual-git-*.vercel.app"
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_origins=["*"]
 )
 
 # Routers
