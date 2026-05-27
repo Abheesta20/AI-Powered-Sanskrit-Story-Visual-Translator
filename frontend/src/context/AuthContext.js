@@ -17,7 +17,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Check for existing session on mount
+  // ================= INIT AUTH =================
   useEffect(() => {
     const initAuth = async () => {
       const token = localStorage.getItem('access_token');
@@ -25,80 +25,96 @@ export const AuthProvider = ({ children }) => {
 
       if (token && savedUser) {
         try {
-          // Verify token is still valid
           const response = await authAPI.getCurrentUser();
           setUser(response.data);
           setIsAuthenticated(true);
         } catch (error) {
-          // Token is invalid, clear storage
           localStorage.removeItem('access_token');
           localStorage.removeItem('user');
           setUser(null);
           setIsAuthenticated(false);
         }
       }
+
       setLoading(false);
     };
 
     initAuth();
   }, []);
 
+  // ================= LOGIN FIXED =================
   const login = async (username, password) => {
-  try {
-    const response = await authAPI.login({ username, password });
+    try {
+      const response = await authAPI.login({ username, password });
 
-    const { access_token, user: userData } = response.data;
+      const { access_token, user: userData } = response.data;
 
-    localStorage.setItem('access_token', access_token);
-    localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('access_token', access_token);
+      localStorage.setItem('user', JSON.stringify(userData));
 
-    setUser(userData);
-    setIsAuthenticated(true);
+      setUser(userData);
+      setIsAuthenticated(true);
 
-    toast.success('Login successful!');
+      toast.success('Login successful!');
+      return { success: true };
 
-    return { success: true };
+    } catch (error) {
+      console.log("LOGIN ERROR RAW:", error.response?.data);
 
-  } catch (error) {
-    console.log("LOGIN ERROR:", error.response?.data);
+      let message = "Login failed";
 
-    // ✅ SAFE ERROR HANDLING
-    let message =
-      error.response?.data?.detail ||
-      error.response?.data?.msg ||
-      (typeof error.response?.data === "string"
-        ? error.response.data
-        : "Invalid username or password");
+      const data = error.response?.data;
 
-    toast.error(message);
+      // ✅ Handle FastAPI validation errors (your case)
+      if (data?.detail && Array.isArray(data.detail)) {
+        message = data.detail.map(err => err.msg).join(", ");
+      }
+      // normal FastAPI error
+      else if (typeof data?.detail === "string") {
+        message = data.detail;
+      }
+      else if (data?.msg) {
+        message = data.msg;
+      }
+      else if (typeof data === "string") {
+        message = data;
+      }
 
-    return { success: false, error: message };
-  }
-};
-  const register = async (userData) => {
-  try {
-    await authAPI.register(userData);
-    toast.success('Registration successful! Please login.');
-    return { success: true };
-  } catch (error) {
-    let message = 'Registration failed';
+      toast.error(message);
 
-    if (Array.isArray(error.response?.data?.detail)) {
-      message = error.response.data.detail[0].msg;
-    } else {
-      message = error.response?.data?.detail || message;
+      return { success: false, error: message };
     }
+  };
 
-    toast.error(message);
-    return { success: false, error: message };
-  }
-};
+  // ================= REGISTER =================
+  const register = async (userData) => {
+    try {
+      await authAPI.register(userData);
+      toast.success('Registration successful! Please login.');
+      return { success: true };
 
+    } catch (error) {
+      let message = 'Registration failed';
+
+      const data = error.response?.data;
+
+      if (Array.isArray(data?.detail)) {
+        message = data.detail[0]?.msg || message;
+      } else if (typeof data?.detail === "string") {
+        message = data.detail;
+      }
+
+      toast.error(message);
+      return { success: false, error: message };
+    }
+  };
+
+  // ================= LOGOUT =================
   const logout = async () => {
     try {
       await authAPI.logout();
     } catch (error) {
-      // Ignore errors on logout
+      // ignore
     } finally {
       localStorage.removeItem('access_token');
       localStorage.removeItem('user');
@@ -108,6 +124,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // ================= UPDATE USER =================
   const updateUser = async (data) => {
     try {
       const response = await authAPI.updateProfile(data);
@@ -115,8 +132,15 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('user', JSON.stringify(response.data));
       toast.success('Profile updated successfully');
       return { success: true };
+
     } catch (error) {
-      const message = error.response?.data?.detail || 'Failed to update profile';
+      const data = error.response?.data;
+
+      let message =
+        data?.detail ||
+        data?.msg ||
+        'Failed to update profile';
+
       toast.error(message);
       return { success: false, error: message };
     }
@@ -132,7 +156,11 @@ export const AuthProvider = ({ children }) => {
     updateUser,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export default AuthContext;
