@@ -44,25 +44,37 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (username, password) => {
-    try {
-      const response = await authAPI.login({ username, password });
-      const { access_token, user: userData } = response.data;
+  try {
+    const response = await authAPI.login({ username, password });
 
-      localStorage.setItem('access_token', access_token);
-      localStorage.setItem('user', JSON.stringify(userData));
+    const { access_token, user: userData } = response.data;
 
-      setUser(userData);
-      setIsAuthenticated(true);
-      toast.success('Login successful!');
+    localStorage.setItem('access_token', access_token);
+    localStorage.setItem('user', JSON.stringify(userData));
 
-      return { success: true };
-    } catch (error) {
-      const message = error.response?.data?.detail || 'Login failed. Please try again.';
-      toast.error(message);
-      return { success: false, error: message };
-    }
-  };
+    setUser(userData);
+    setIsAuthenticated(true);
 
+    toast.success('Login successful!');
+
+    return { success: true };
+
+  } catch (error) {
+    console.log("LOGIN ERROR:", error.response?.data);
+
+    // ✅ SAFE ERROR HANDLING
+    let message =
+      error.response?.data?.detail ||
+      error.response?.data?.msg ||
+      (typeof error.response?.data === "string"
+        ? error.response.data
+        : "Invalid username or password");
+
+    toast.error(message);
+
+    return { success: false, error: message };
+  }
+};
   const register = async (userData) => {
   try {
     await authAPI.register(userData);
